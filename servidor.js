@@ -6,7 +6,8 @@ var bodyParser = require('body-parser');
 const WebSocket = require('ws');												// Módulo websocket
 var vectorConnections=[];														// Vetor de conexões
 var http = require('http')
-const TIMEOUT = 10000;															// Tempo máximo para se logar
+const TIMEOUT = 10000;
+var matches = [];															// Tempo máximo para se logar
 
 // Criação do servidor
 const wss = new WebSocket.Server({ port: 8080 },function (){
@@ -49,11 +50,11 @@ function broadcast (msg)
 
 // Compartilha com todos os usuários a lista dos que estão online
 function updateUsers(){
-	var users[];
+	let users = [];
 
-	for(let x = 0; x < vectorConnections.length; xx++){
+	for(let x = 0; x < vectorConnections.length; x++){
 		if(vectorConnections[x].validate == true){
-			users.push(vectorConnections[i].name);
+			users.push(vectorConnections[x].name);
 		}
 		else{
 			// Somente usuários logados são mostrados
@@ -63,6 +64,8 @@ function updateUsers(){
 	let MSG = {type: 'USERS', value: users};									// Cria mensagem com os usuários online
 	broadcast(MSG);																// Envia a informação via broadcast
 }
+
+
 
 
 // Envio de mensagem entre dois usuários
@@ -98,7 +101,7 @@ wss.on('connection', function connection(ws) {
   	ws.on('message', function incoming(MSG) {
 
     	MSG = JSON.parse(MSG);													// Transforma em objeto JSON
-   
+		console.log("tipo de mensagem: " + MSG.type);   
 
     	if (MSG.type == 'LOGIN')
     	{
@@ -112,43 +115,31 @@ wss.on('connection', function connection(ws) {
     	}
     	else if(MSG.type == 'CONVITE'){
     		resp = console.log("Enviando uma mensagem privada para" + MSG.value.TO);
-			MSG.value.board= createBoard();
 			privateMSG(MSG.value.TO, MSG);
     	}
     	else if(MSG.type == 'RESP_CONVITE'){
     		if(MSG.value.resp == true){
-    			let newBoard = createBoard();
-
     			console.log("começou partida");
-    			console.log(newBoard);
-    			insertMatch(MSG.value.FROM, MSG.value.TO, newBoard);
+    			//insertMatch(MSG.value.FROM, MSG.value.TO);
     		}
     		// responde o convite
     		privateMSG(MSG.value.FROM, MSG);
     	}
-    	else if(MSG.type == 'PARTIDA'){
-    		// BELISA
-    	}
+      else if(MSG.type == 'JOGADA'){
+        let MSG_ATT = {
+          type: 'ATUALIZA_TABULEIRO',
+          value: MSG.value,
+          from: MSG.FROM
+        }
+        privateMSG(MSG.FROM, MSG_ATT);
+      }
 	});
 });
 
 
 /*-------------------------------------- TABULEIRO E JOGADAS ----------------------------------*/
-function createBoard{
-	let board = new Array(8);
-	for(let x = 0; x < 8; x++){
-		board[x] = new Array(8);
-	}
-
-	for(let x = 0; x < 2; x++){
-		for(y = 0; y < 8; y++){
-			board[x][y] = 0;			// claro
-			board[x+6][y] = 1;			// escuro
-		}
-	}
-
-	console.log(board);
-	return board;
+function createBoard(){
+	// BELISA
 }
 
 function validPlay(/* Parâmetros */){
@@ -159,8 +150,8 @@ function pieceMove(/* Parâmetros */){
 	// BELISA
 }
 
-function insertMatch(player1, player2, board){
-	var match = {player1: player1, player2: player2, board: board, turn: 0}
+function insertMatch(player1, player2){
+	var match = {player1: player1, player2: player2, turn: 0}
 	matches.push(match);
 }
 
@@ -192,7 +183,7 @@ function searchMatch(player){
 app.use(bodyParser.json()); 
 app.use(express.static(__dirname + '/public'));
 app.get('/', function (req, resp) {
-  resp.write("teste");
+  resp.write("SERVIDOR WEBSOCKETS");
   resp.end();
 });
 
