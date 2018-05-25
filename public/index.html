@@ -21,7 +21,6 @@
 
 <div class="center" id="game-board">
 	<div id="board" style="width: 400px"></div>
-	<input type="button" id="send" value="Enviar Jogada" />
 </div>
 
 <script type="text/javascript" src="reconnecting-websocket.min.js"></script>
@@ -33,7 +32,6 @@
     var webServer;
 	var websocket;
 	var buttonConnect = O('conecta');
-	var buttonSend = O('send')
 	var userid = O('user');
 	var myID;
 	var board; 
@@ -66,10 +64,6 @@
 	}, false);
 
 
-	// Envia Jogada
-	buttonSend.addEventListener('click', function(){
-		sendPlay();
-	}, false);
 
 	// Loga com o enter
 	userid.addEventListener('keydown', function(e){
@@ -86,18 +80,16 @@
 		localStorage.setItem('DADOS', userData);
 	}
 
-	function sendPlay(){
+	function sendPlay(posicao){
 		cfg.draggable = false; 
 		let from;
-
 		if(myID != idP1){
 			from = idP1;
 		}
 		else if(myID != idP2){
 			from = idP2;
 		}
-
-		position = board.fen();
+		position = posicao;
 		let MSG_POSITION = {
 			type: 'JOGADA',
 			value: position,
@@ -205,13 +197,15 @@
 		if (player){ 
 			cfg = {
 				draggable: true,
-		  		position: 'start' 
+		  		position: 'start', 
+		  		onDrop : onDrop
 			};
 		}
 		else { 
 			cfg = {
 				draggable: false,
-		  		position: 'start' 
+		  		position: 'start', 
+		  		onDrop : onDrop
 			};
 		}
 		board = ChessBoard('board', cfg);
@@ -229,19 +223,20 @@
 			case 'CONVITE':
 				var MSG_RESP = {type: 'RESP_CONVITE', value: msg.value}
 				// Envia pergunta ao usuário invitado
-				var resp = confirm("Convite de partida de "+ msg.value.FROM +", deseja aceitar?");
-				if(resp){
-					MSG_RESP.value.resp = true;
-					idP1 = msg.value.FROM;
-					idP2 = myID;
-					gameScreen(); 
-					cria(false);
+				if((idP1 != myID) && (idP2 != myID)){
+					var resp = confirm("Convite de partida de "+ msg.value.FROM +", deseja aceitar?");
+					if(resp){
+						MSG_RESP.value.resp = true;
+						idP1 = msg.value.FROM;
+						idP2 = myID;
+						gameScreen(); 
+						cria(false);
+					}
+					else{
+						MSG_RESP.valor.resp = false;
+					}
+					websocket.send(JSON.stringify(MSG_RESP));
 				}
-				else{
-					MSG_RESP.valor.resp = false;
-				}
-
-				websocket.send(JSON.stringify(MSG_RESP));
 				break;
 			
 			case 'RESP_CONVITE':
@@ -262,13 +257,19 @@
 				cfg.position = msg.value; 
 				console.log(msg.value);
 
-				board = ChessBoard('board', cfg);
+				board = ChessBoard('board', cfg);	
 
 
 				
 			break;
 		}
 	}
+
+var onDrop = function(source, target, piece, newPos, oldPos, orientation) {
+ 	sendPlay(ChessBoard.objToFen(newPos)); 
+};
+
+
 </script>
 <script>
 
